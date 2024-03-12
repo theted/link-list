@@ -22,10 +22,27 @@ export const LinkList = () => {
     queryFn: () => fetch(`${API_URL}/links`).then((res) => res.json()),
   });
 
-  const deleteLink = (id: number) => async () => {
-    // TODO: use react-query to remove link from server
-    console.log("deleting", id);
-  };
+  const removeLink = useMutation({
+    mutationFn: (id: number) => {
+      return fetch(`${API_URL}/links/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["links"] });
+      const previousItems = queryClient.getQueryData(["links"]);
+      queryClient.setQueryData(["links"], (old) =>
+        old.filter((l) => l.id !== id)
+      );
+      return { previousItems };
+    },
+    onError: (err, id, context) => {
+      queryClient.setQueryData(["links"], context.previousItems);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+  });
 
   if (isLoading) return "Loading...";
   if (error) return error.message;
@@ -35,7 +52,7 @@ export const LinkList = () => {
       {data.map((link: LinkProps & { id: number }) => (
         <li key={link.id}>
           <Link {...link} />
-          <a onClick={deleteLink(link.id)}>X</a>
+          <a onClick={() => removeLink.mutate(link.id)}>X</a>
         </li>
       ))}
     </ul>

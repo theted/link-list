@@ -5,6 +5,7 @@ import cors from "cors";
 import { port } from "./config";
 import { db } from "./db";
 import { links as linkScema } from "./db/schema";
+import { eq } from "drizzle-orm";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
@@ -41,6 +42,12 @@ app.post("/links", async (req, res) => {
   const { url } = req.body;
   const title = await getUrlTitle(url);
   const link = await db.insert(linkScema).values([{ url, title }]);
+  res.json(link);
+});
+
+app.delete("/links/:id", async (req, res) => {
+  const { id } = req.params;
+  const link = await db.delete(linkScema).where(eq(linkScema.id, Number(id)));
   res.json(link);
 });
 
