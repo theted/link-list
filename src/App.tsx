@@ -1,17 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LinkList } from "./components/LinksList/LinkList";
 import { LinkForm } from "./components/LinkForm/LinkForm";
+import { Outlet } from "react-router-dom";
 import "./App.css";
 
-const queryClient = new QueryClient();
+const App = () => {
+  return (
+    <div className="p-10 mt-12">
+      <Outlet />
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <div className="main">
-      <LinkList />
       <LinkForm />
     </div>
-  </QueryClientProvider>
-);
+  );
+};
 
 export default App;

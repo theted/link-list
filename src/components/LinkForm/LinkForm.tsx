@@ -42,17 +42,28 @@ export const LinkForm = () => {
 
   // TODO: refactor into reusable hook
   const useMutationHook = useMutation({
-    mutationFn: createLink,
+    mutationFn: (data) => {
+      const currentUrl = window.location.href.split("/");
+
+      return createLink({
+        ...data,
+        category: currentUrl.length === 5 ? currentUrl[4] : null,
+      });
+    },
     onMutate: async (newLink) => {
       await queryClient.cancelQueries({ queryKey: ["links"] });
 
       const currentLinks = queryClient.getQueryData(["links"]);
+      const currentUrl = window.location.href.split("/");
+
+      console.log({ currentUrl });
 
       queryClient.setQueryData(["links"], (old: LinkProps[]) => [
         ...old,
         {
           ...newLink,
           id: currentLinks ? currentLinks.length + 1 : 1,
+          category: currentUrl.length === 5 ? currentUrl[4] : null,
           title: newLink.url,
         },
       ]);
@@ -75,13 +86,11 @@ export const LinkForm = () => {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex gap-3">
       <Input {...register("url", { required: true })} />
+
       {errors && <span>{errors.message}</span>}
-      <Button>Send it</Button>
+      <Button>Create link</Button>
     </form>
   );
 };
