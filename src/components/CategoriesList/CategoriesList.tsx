@@ -3,6 +3,7 @@ import { API_URL } from "@/constants";
 import { Link } from "react-router-dom";
 import { CategoryForm } from "../CategoryForm/CategoryForm";
 import { Key } from "react";
+import classes from "@/classes";
 
 export const CategoriesList = () => {
   const { isLoading, error, data } = useQuery({
@@ -14,9 +15,9 @@ export const CategoriesList = () => {
   if (error) return error.message;
 
   return (
-    <ul>
+    <ul className="rounded-lg">
       {data.map((category: { id: Key; name: string }) => (
-        <li key={category.id}>
+        <li key={category.id} className={classes.li}>
           <Link to={`/categories/${category.id}`}>{category.name}</Link>
         </li>
       ))}

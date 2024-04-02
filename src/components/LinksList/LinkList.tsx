@@ -1,8 +1,7 @@
-import { FC } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { API_URL } from "@/constants";
-import { useOptimisticMutation } from "@/api";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import classes from "@/classes";
 
 type LinkProps = {
   url: string;
@@ -10,15 +9,10 @@ type LinkProps = {
 };
 
 const Link = ({ url, title }: LinkProps) => (
-  <a href={url} target="_blank" className="grow">
+  <a href={url} target="_blank" className={classes.link}>
     {title}
   </a>
 );
-
-const classes = {
-  li: "list-none border flex my-2 text-left p-2 transition-colors rounded-sm  hover:bg-red-700 hover:text-red-300",
-  a: "ml-3 font-bold flex items-center opacity-0 hover:opacity-100",
-};
 
 export const LinkList = () => {
   const queryClient = useQueryClient();
@@ -64,11 +58,14 @@ export const LinkList = () => {
   if (error) return error.message;
 
   return (
-    <ul>
+    <ul className="rounded-lg">
       {data.map((link: LinkProps & { id: number }) => (
         <li key={link.id} className={classes.li}>
           <Link {...link} />
-          <a onClick={() => removeLink.mutate(link.id)} className={classes.a}>
+          <a
+            onClick={() => removeLink.mutate(link.id)}
+            className={classes.closeButton}
+          >
             <Cross2Icon />
           </a>
         </li>
