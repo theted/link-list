@@ -18,7 +18,9 @@ export const CategoriesList = () => {
     <ul className="rounded-lg">
       {data.map((category: { id: Key; name: string }) => (
         <li key={category.id} className={classes.li}>
-          <Link to={`/categories/${category.id}`}>{category.name}</Link>
+          <Link to={`/categories/${category.id}`} className="grow">
+            {category.name}
+          </Link>
         </li>
       ))}
 
