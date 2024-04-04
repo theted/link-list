@@ -1,57 +1,44 @@
 import express from "express";
 import path from "path";
 import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import { port } from "./config";
-import { db } from "./db";
-import { links as linkScema } from "./db/schema";
-import { eq } from "drizzle-orm";
+import authRouter from "./routes/auth";
+import linksRouter from "./routes/links";
+import categoriesRouter from "./routes/categories";
+import { validateToken } from "./middleware/jwt";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 const app = express();
 
 app.use(cors());
-
+app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "dist")));
 
-// links
-
-type ParseTitle = (body: string) => string | null;
-
-const parseTitle: ParseTitle = (body) => {
-  const match = body.match(/<title>([^<]*)<\/title>/);
-  if (!match) return null;
-  return match[1] || null;
-};
-
-const getUrlTitle = async (url) => {
-  return fetch(url)
-    .then((res) => res.text())
-    .then((body) => parseTitle(body));
-};
-
-app.get("/links", async (_, res) => {
-  const users = await db.select().from(linkScema);
-  res.json(users);
+app.use((req, _res, next) => {
+  console.log({ method: req.method, url: req.url, body: req.body });
+  next();
 });
 
-app.post("/links", async (req, res) => {
-  const { url } = req.body;
-  const title = await getUrlTitle(url);
-  const link = await db.insert(linkScema).values([{ url, title }]);
-  res.json(link);
+app.use((_req, res, next) => {
+  const originalSend = res.send;
+
+  res.send = function (body) {
+    console.dir(JSON.parse(body));
+    originalSend.call(this, body);
+  };
+  next();
 });
 
-app.delete("/links/:id", async (req, res) => {
-  const { id } = req.params;
-  const link = await db.delete(linkScema).where(eq(linkScema.id, Number(id)));
-  res.json(link);
-});
+app.use("/links", validateToken, linksRouter);
+app.use("/categories", validateToken, categoriesRouter);
+app.use("/auth", authRouter);
 
-app.get("/*", (req, res) => {
+app.get("/*", (_req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 

@@ -1,5 +1,7 @@
 export const API_URL = import.meta.env.VITE_API_URL;
 
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_AUTH_ID;
+
 export const URL_PATTERN = new RegExp(
   "^(https?:\\/\\/)?" + // protocol
     "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" + // domain name and extension

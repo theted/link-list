@@ -1,17 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
-import { API_URL } from "@/constants";
+import { Navigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { CategoryForm } from "../CategoryForm/CategoryForm";
 import { Key } from "react";
 import classes from "@/classes";
+import { useGet } from "@/api";
 
 export const CategoriesList = () => {
-  const { isLoading, error, data } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => fetch(`${API_URL}/categories`).then((res) => res.json()),
-  });
+  const { isLoading, error, data } = useGet("categories", "categories");
 
   if (isLoading) return "Loading...";
+
+  // TODO: handle token error in hook
+  // if (data.message) {
+  //   return <Navigate to="/login" />;
+  // }
+
   if (error) return error.message;
 
   return (

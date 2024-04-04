@@ -1,7 +1,8 @@
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { API_URL } from "@/constants";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { Cross2Icon, Pencil1Icon } from "@radix-ui/react-icons";
 import classes from "@/classes";
+import { useGet } from "@/api";
 
 type LinkProps = {
   url: string;
@@ -17,17 +18,10 @@ const Link = ({ url, title }: LinkProps) => (
 export const LinkList = () => {
   const queryClient = useQueryClient();
 
-  // TODO: use actual router route
-  const urlParts = window.location.href.split("/");
-  const links_url =
-    urlParts.length === 5
-      ? `${API_URL}/categories/${urlParts[4]}`
-      : `${API_URL}/links`;
-
-  const { isLoading, error, data } = useQuery({
-    queryKey: ["links"],
-    queryFn: () => fetch(links_url).then((res) => res.json()),
-  });
+  const { isLoading, error, data } = useGet<LinkProps>(
+    `categories/${window.location.href.split("/")[4]}`,
+    "links"
+  );
 
   // TODO: refactor into reusable hook
   const removeLink = useMutation({
@@ -48,8 +42,6 @@ export const LinkList = () => {
       queryClient.setQueryData(["links"], context.previousItems);
     },
     onSettled: () => {
-      // -> alternatively, we can update the cache with the new data directly
-      // queryClient.setQueryData(["links", id], newPost);
       queryClient.invalidateQueries({ queryKey: ["links"] });
     },
   });
@@ -57,19 +49,35 @@ export const LinkList = () => {
   if (isLoading) return "Loading...";
   if (error) return error.message;
 
+  const editLink = (data: any) => {
+    console.log("edit!", data);
+  };
+
   return (
-    <ul className="rounded-lg">
-      {data.map((link: LinkProps & { id: number }) => (
-        <li key={link.id} className={classes.li}>
-          <Link {...link} />
-          <a
-            onClick={() => removeLink.mutate(link.id)}
-            className={classes.closeButton}
-          >
-            <Cross2Icon />
-          </a>
-        </li>
-      ))}
-    </ul>
+    <>
+      <h2 className="text-lg text-left font-bold">{data.category.name}</h2>
+      <ul className="rounded-lg">
+        {/* <pre>{JSON.stringify(data.category, null, 2)}</pre> */}
+        {data.links.map((link: LinkProps & { id: number }) => (
+          <li key={link.id} className={classes.li}>
+            <Link {...link} />
+            <a
+              onClick={() => editLink(link.id)}
+              onKeyDown={() => editLink(link.id)}
+              className={classes.linkButton}
+            >
+              <Pencil1Icon />
+            </a>
+            <a
+              onClick={() => removeLink.mutate(link.id)}
+              onKeyDown={() => removeLink.mutate(link.id)}
+              className={classes.linkButton}
+            >
+              <Cross2Icon />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 };

@@ -1,15 +1,12 @@
 import { LinkList } from "@/components/LinksList/LinkList";
-import { Link } from "react-router-dom";
-import { HomeIcon } from "@radix-ui/react-icons";
+import { LinkForm } from "@/components/LinkForm/LinkForm";
+import { Page } from "@/components/Page/Page";
 
 export const Category = () => {
   return (
-    <>
-      <Link to="/">
-        <HomeIcon className="bg-seondary-foreground" />
-      </Link>
-
+    <Page>
       <LinkList />
-    </>
+      <LinkForm />
+    </Page>
   );
 };
