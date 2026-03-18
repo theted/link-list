@@ -1,0 +1,22 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_AUTH_ID: ${VITE_AUTH_ID}
+    ports:
+      - "3010:8080"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_SECTRET: ${AUTH_SECTRET}
+    restart: unless-stopped
+    networks:
+      - proxy
+      - postgres
+
+networks:
+  proxy:
+    external: true
+  postgres:
+    external: true
