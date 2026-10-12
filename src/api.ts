@@ -11,6 +11,8 @@ export type Link = {
   categoryId: number | null;
   // Stable React key across the optimistic row and the saved one
   clientKey?: number;
+  // When this browser added it, so a fresh row can be highlighted once
+  addedAt?: number;
   pending?: boolean;
 };
 
@@ -77,6 +79,7 @@ export const useAddLink = () => {
           title: title ?? null,
           categoryId: category,
           createdAt: new Date().toISOString(),
+          addedAt: Date.now(),
           pending: true,
         },
         ...old,
@@ -84,7 +87,9 @@ export const useAddLink = () => {
     },
     onSuccess: (link, { key }) => {
       queryClient.setQueryData<Link[]>(LINKS, (old = []) =>
-        old.map((l) => (l.clientKey === key ? { ...link, clientKey: key } : l))
+        old.map((l) =>
+          l.clientKey === key ? { ...link, clientKey: key, addedAt: l.addedAt } : l
+        )
       );
     },
     onError: (_err, { key }) => {

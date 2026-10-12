@@ -22,10 +22,14 @@ type Props = {
   link: Link;
   categories: Category[];
   showCategory: boolean;
+  // Position in the list, for a short staggered entrance
+  index: number;
 };
 
+const spring = { type: "spring", stiffness: 560, damping: 38 } as const;
+
 export const LinkRow = forwardRef<HTMLLIElement, Props>(
-  ({ link, categories, showCategory }, ref) => {
+  ({ link, categories, showCategory, index }, ref) => {
     const toast = useToast();
     const addLink = useAddLink();
     const updateLink = useUpdateLink();
@@ -88,11 +92,25 @@ export const LinkRow = forwardRef<HTMLLIElement, Props>(
         ref={ref}
         layout="position"
         initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          transition: { ...spring, delay: Math.min(index, 12) * 0.03 },
+        }}
         exit={{ opacity: 0, x: -12, transition: { duration: 0.14 } }}
-        transition={{ type: "spring", stiffness: 560, damping: 38 }}
-        className="group -mx-3 flex items-start gap-3 rounded-xl px-3 py-3 transition-colors focus-within:bg-surface hover:bg-surface"
+        transition={spring}
+        className="group relative -mx-3 flex items-start gap-3 rounded-xl px-3 py-3 transition-colors focus-within:bg-surface hover:bg-surface"
       >
+        {/* A link added a moment ago glows briefly, so the eye finds it */}
+        {link.addedAt !== undefined && Date.now() - link.addedAt < 3000 && (
+          <motion.span
+            aria-hidden
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ delay: 0.5, duration: 1.4, ease: "easeOut" }}
+            className="pointer-events-none absolute inset-0 rounded-xl bg-link/10"
+          />
+        )}
         <Favicon domain={domain} className="mt-[3px]" />
 
         <div className="min-w-0 flex-1">

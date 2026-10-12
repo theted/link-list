@@ -8,9 +8,34 @@
     <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0c0f21" media="(prefers-color-scheme: dark)" />
     <title>link-list</title>
+    <!-- Inline so the very first frame is the right colour, with a spinner
+         that only fades in when loading takes long enough to notice -->
+    <style>
+      html { background: #f5f6f8; }
+      .boot { position: fixed; inset: 0; display: grid; place-items: center; animation: boot-in 0.3s 0.2s both; }
+      .boot svg { width: 30px; height: 30px; animation: boot-spin 0.9s linear infinite; }
+      .boot circle { fill: none; stroke-width: 3; stroke-linecap: round; }
+      .boot .track { stroke: rgb(43 68 255 / 0.16); }
+      .boot .arc { stroke: #2b44ff; stroke-dasharray: 22 60; }
+      @media (prefers-color-scheme: dark) {
+        html { background: #0c0f21; }
+        .boot .track { stroke: rgb(132 145 255 / 0.18); }
+        .boot .arc { stroke: #8491ff; }
+      }
+      @keyframes boot-in { from { opacity: 0; } }
+      @keyframes boot-spin { to { transform: rotate(1turn); } }
+      @media (prefers-reduced-motion: reduce) { .boot svg { animation-duration: 2.4s; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot" role="status" aria-label="Loading">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle class="track" cx="16" cy="16" r="12" />
+          <circle class="arc" cx="16" cy="16" r="12" />
+        </svg>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

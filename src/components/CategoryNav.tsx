@@ -3,6 +3,7 @@ import { NavLink, useMatch, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Plus } from "lucide-react";
 import { useAddCategory, useCategories, useLinks } from "@/api";
+import { Count } from "@/components/Count";
 import { cn } from "@/lib/utils";
 
 const NewCategory = () => {
@@ -132,9 +133,7 @@ export const CategoryNav = () => {
                   />
                 )}
               </span>
-              <span className="ml-auto text-xs tabular-nums text-ink-soft">
-                {item.count}
-              </span>
+              <Count value={item.count} className="ml-auto" />
             </NavLink>
           </li>
         ))}

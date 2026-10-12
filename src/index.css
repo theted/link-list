@@ -55,17 +55,31 @@
   }
 }
 
+/* Registered, so the underline's colour can transition like a link turning
+   visited; gradients themselves can't be animated */
+@property --underline {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgb(43 68 255);
+}
+
 @layer components {
   /* The signature: a thick, low-slung link underline. As a background it can
      be drawn in, and it wraps onto every line of a multi-line run. */
   .underline-link {
-    background-image: linear-gradient(rgb(var(--link)), rgb(var(--link)));
+    --underline: rgb(var(--link));
+    background-image: linear-gradient(var(--underline), var(--underline));
+    transition: --underline 0.35s ease;
     background-repeat: no-repeat;
     background-position: 0 86%;
     background-size: 100% 0.085em;
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
     padding-bottom: 0.06em;
+  }
+
+  .underline-visited {
+    --underline: rgb(var(--visited));
   }
 
   .display {
@@ -78,7 +92,26 @@
   }
 }
 
+/* The splash's band of saved links drifts past; it pauses under the pointer */
+@keyframes drift {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.drift {
+  animation: drift var(--drift-duration, 70s) linear infinite;
+}
+
+.drift:hover {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .drift {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {
