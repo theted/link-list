@@ -1,53 +1,63 @@
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { API_URL } from "@/constants";
+import { useParams } from "react-router-dom";
 import { Cross2Icon, Pencil1Icon } from "@radix-ui/react-icons";
 import classes from "@/classes";
-import { useGet } from "@/api";
+import { useGet, deleteRequest } from "@/api";
 
 type LinkProps = {
   url: string;
-  title: string;
+  title: string | null;
+};
+
+export type CategoryWithLinks = {
+  category: { id: number; name: string };
+  links: (LinkProps & { id: number })[];
 };
 
 const Link = ({ url, title }: LinkProps) => (
   <a href={url} target="_blank" className={classes.link}>
-    {title}
+    {title ?? url}
   </a>
 );
 
 export const LinkList = () => {
   const queryClient = useQueryClient();
+  const { id } = useParams();
+  const queryKey = ["links", id];
 
-  const { isLoading, error, data } = useGet<LinkProps>(
-    `categories/${window.location.href.split("/")[4]}`,
-    "links"
+  const { isLoading, error, data } = useGet<CategoryWithLinks>(
+    `categories/${id}`,
+    queryKey
   );
 
   // TODO: refactor into reusable hook
   const removeLink = useMutation({
-    mutationFn: (id: number) => {
-      return fetch(`${API_URL}/links/${id}`, {
-        method: "DELETE",
-      });
-    },
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ["links"] });
-      const previousItems = queryClient.getQueryData(["links"]);
-      queryClient.setQueryData(["links"], (old) =>
-        old.filter((l) => l.id !== id)
-      );
+    mutationFn: (linkId: number) => deleteRequest(`links/${linkId}`),
+    onMutate: async (linkId: number) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousItems =
+        queryClient.getQueryData<CategoryWithLinks>(queryKey);
+
+      if (previousItems) {
+        queryClient.setQueryData<CategoryWithLinks>(queryKey, {
+          ...previousItems,
+          links: previousItems.links.filter((l) => l.id !== linkId),
+        });
+      }
+
       return { previousItems };
     },
-    onError: (err, id, context) => {
-      queryClient.setQueryData(["links"], context.previousItems);
+    onError: (_err, _linkId, context) => {
+      queryClient.setQueryData(queryKey, context?.previousItems);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["links"] });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
   if (isLoading) return "Loading...";
   if (error) return error.message;
+  if (!data) return null;
 
   const editLink = (data: any) => {
     console.log("edit!", data);
@@ -58,7 +68,7 @@ export const LinkList = () => {
       <h2 className="text-lg text-left font-bold">{data.category.name}</h2>
       <ul className="rounded-lg">
         {/* <pre>{JSON.stringify(data.category, null, 2)}</pre> */}
-        {data.links.map((link: LinkProps & { id: number }) => (
+        {data.links.map((link) => (
           <li key={link.id} className={classes.li}>
             <Link {...link} />
             <a

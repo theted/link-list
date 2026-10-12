@@ -3,17 +3,15 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { API_URL } from "@/constants";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { postRequest } from "@/api";
+import type { Category } from "@/components/CategoriesList/CategoriesList";
 
-type LinkProps = {
-  url: string;
-  title: string;
-};
-
-const LinkFormInput = z.object({
+const CategoryFormInput = z.object({
   name: z.string().nonempty("Title is required"),
 });
+
+type CategoryFormInput = z.infer<typeof CategoryFormInput>;
 
 export const CategoryForm = () => {
   const queryClient = useQueryClient();
@@ -23,18 +21,12 @@ export const CategoryForm = () => {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<typeof LinkFormInput>({
-    resolver: zodResolver(LinkFormInput),
+  } = useForm<CategoryFormInput>({
+    resolver: zodResolver(CategoryFormInput),
   });
 
-  const createCategory = async (data: LinkProps) => {
-    return fetch(`${API_URL}/categories`, {
-      method: "POST",
-      mode: "cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-  };
+  const createCategory = async (data: CategoryFormInput) =>
+    postRequest("categories", data);
 
   // TODO: refactor into reusable hook
   const useMutationHook = useMutation({
@@ -42,35 +34,36 @@ export const CategoryForm = () => {
     onMutate: async (newCategory) => {
       await queryClient.cancelQueries({ queryKey: ["categories"] });
 
-      const currentLinks = queryClient.getQueryData(["categories"]);
+      const currentCategories = queryClient.getQueryData<Category[]>([
+        "categories",
+      ]);
 
-      queryClient.setQueryData(["categories"], (old: LinkProps[]) => [
+      queryClient.setQueryData<Category[]>(["categories"], (old = []) => [
         ...old,
-        newCategory,
+        { ...newCategory, id: -Date.now() },
       ]);
 
       reset();
 
-      return { currentLinks };
+      return { currentCategories };
     },
     onError: (err, newCategory, context) => {
       console.error({ err, newCategory, context });
-      queryClient.setQueryData(["categories"], context.currentLinks);
+      queryClient.setQueryData(["categories"], context?.currentCategories);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
   });
 
-  const onSubmit: SubmitHandler<LinkFormInput> = (data) => {
-    console.log("CREATE CAT", data);
+  const onSubmit: SubmitHandler<CategoryFormInput> = (data) => {
     useMutationHook.mutate(data);
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex gap-3">
       <Input {...register("name", { required: true })} />
-      {errors && <span>{errors.message}</span>}
+      {errors.name && <span>{errors.name.message}</span>}
       <Button>Create category</Button>
     </form>
   );

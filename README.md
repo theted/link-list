@@ -6,5 +6,5 @@ Powered by: drizzle, express, vite, react, react-query, react-hook-form, tailwin
 
 ### Requirements
 
-- mysql
+- postgres
 - bun

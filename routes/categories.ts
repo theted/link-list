@@ -1,28 +1,33 @@
 import express from "express";
 import { db } from "../db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   categories as categorySchema,
   links as linkSchema,
 } from "../db/schema";
-import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
-  const categories = await db.select().from(categorySchema);
+router.get("/", async (_req, res) => {
+  const categories = await db
+    .select()
+    .from(categorySchema)
+    .where(eq(categorySchema.userId, res.locals.user.id));
   res.json(categories);
 });
 
 router.get("/:id", async (req, res) => {
-  console.log({ userRRR: req.user });
+  const id = Number(req.params.id);
+  const userId = res.locals.user.id;
 
-  const { id } = req.params;
+  if (!Number.isInteger(id)) {
+    return res.status(404).json({ message: "Category not found" });
+  }
 
-  const category = await db
+  const [category] = await db
     .select()
     .from(categorySchema)
-    .where(eq(categorySchema.id, Number(id)));
+    .where(and(eq(categorySchema.id, id), eq(categorySchema.userId, userId)));
 
   if (!category) {
     return res.status(404).json({ message: "Category not found" });
@@ -31,14 +36,17 @@ router.get("/:id", async (req, res) => {
   const links = await db
     .select()
     .from(linkSchema)
-    .where(eq(linkSchema.categoryId, Number(id)));
+    .where(and(eq(linkSchema.categoryId, id), eq(linkSchema.userId, userId)));
 
-  res.json({ category: category[0], links });
+  res.json({ category, links });
 });
 
 router.post("/", async (req, res) => {
   const { name } = req.body;
-  const category = await db.insert(categorySchema).values([{ name }]);
+  const [category] = await db
+    .insert(categorySchema)
+    .values({ name, userId: res.locals.user.id })
+    .returning();
   res.json(category);
 });
 
