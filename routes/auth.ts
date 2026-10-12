@@ -1,43 +1,53 @@
 import express from "express";
+import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { users as userSchema } from "../db/schema";
 import { OAuth2Client } from "google-auth-library";
+import { googleClientId } from "../config";
+import { signToken } from "../middleware/jwt";
 
 const router = express.Router();
 const client = new OAuth2Client();
 
 router.post("/", async (req, res) => {
-  const { credential, client_id } = req.body;
+  const { credential } = req.body;
 
   try {
+    // The audience is ours, never the client's: a token minted for another
+    // Google client must not sign anyone in here.
     const ticket = await client.verifyIdToken({
       idToken: credential,
-      audience: client_id,
+      audience: googleClientId,
     });
 
     const payload = ticket.getPayload();
 
-    if (!payload) {
+    if (!payload?.email) {
       return res.status(401).json({ message: "Invalid token" });
     }
 
-    const user = await db
+    let [user] = await db
       .select()
       .from(userSchema)
-      .where({ email: payload.email });
+      .where(eq(userSchema.email, payload.email));
 
     if (!user) {
-      await db
+      [user] = await db
         .insert(userSchema)
-        .values([{ email: payload.email, name: payload.name }]);
+        .values({ email: payload.email, name: payload.name })
+        .returning();
     }
 
-    res
-      .status(200)
-      .cookie("token", credential, { http: true })
-      .json({ payload });
+    const token = signToken({
+      id: user.id,
+      email: payload.email,
+      name: user.name,
+    });
+
+    res.status(200).json({ payload, token });
   } catch (err) {
-    res.status(400).json({ err });
+    console.error(err);
+    res.status(400).json({ message: "Could not verify the Google sign-in" });
   }
 });
 

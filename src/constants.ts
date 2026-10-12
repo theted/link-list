@@ -1,4 +1,5 @@
-export const API_URL = import.meta.env.VITE_API_URL;
+// Empty in production: the server serves the app and the API from one origin
+export const API_URL = `${import.meta.env.VITE_API_URL ?? ""}/api`;
 
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_AUTH_ID;
 

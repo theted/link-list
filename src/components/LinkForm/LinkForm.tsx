@@ -1,16 +1,13 @@
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { API_URL, URL_PATTERN } from "@/constants";
+import { URL_PATTERN } from "@/constants";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { useOptimisticMutation } from "./api";
-
-type LinkProps = {
-  url: string;
-  title: string;
-};
+import { postRequest } from "@/api";
+import type { CategoryWithLinks } from "@/components/LinksList/LinkList";
 
 const LinkFormInput = z.object({
   url: z
@@ -19,65 +16,51 @@ const LinkFormInput = z.object({
     .regex(URL_PATTERN, "URL is not valid"),
 });
 
+type LinkFormInput = z.infer<typeof LinkFormInput>;
+
 export const LinkForm = () => {
   const queryClient = useQueryClient();
+  const { id: category } = useParams();
+  const queryKey = ["links", category];
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<typeof LinkFormInput>({
+  } = useForm<LinkFormInput>({
     resolver: zodResolver(LinkFormInput),
   });
 
-  const createLink = async (data: LinkProps) => {
-    return fetch(`${API_URL}/links`, {
-      method: "POST",
-      mode: "cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-  };
-
   // TODO: refactor into reusable hook
   const useMutationHook = useMutation({
-    mutationFn: (data) => {
-      const currentUrl = window.location.href.split("/");
-
-      return createLink({
-        ...data,
-        category: currentUrl.length === 5 ? currentUrl[4] : null,
-      });
-    },
+    mutationFn: (data: LinkFormInput) =>
+      postRequest("links", { ...data, category }),
     onMutate: async (newLink) => {
-      await queryClient.cancelQueries({ queryKey: ["links"] });
+      await queryClient.cancelQueries({ queryKey });
 
-      const currentLinks = queryClient.getQueryData(["links"]);
-      const currentUrl = window.location.href.split("/");
+      const current = queryClient.getQueryData<CategoryWithLinks>(queryKey);
 
-      console.log({ currentUrl });
-
-      queryClient.setQueryData(["links"], (old: LinkProps[]) => [
-        ...old,
-        {
-          ...newLink,
-          id: currentLinks ? currentLinks.length + 1 : 1,
-          category: currentUrl.length === 5 ? currentUrl[4] : null,
-          title: newLink.url,
-        },
-      ]);
+      if (current) {
+        queryClient.setQueryData<CategoryWithLinks>(queryKey, {
+          ...current,
+          links: [
+            ...current.links,
+            { ...newLink, id: -Date.now(), title: newLink.url },
+          ],
+        });
+      }
 
       reset();
 
-      return { currentLinks };
+      return { current };
     },
     onError: (err, newLink, context) => {
       console.error({ err, newLink, context });
-      queryClient.setQueryData(["links"], context.currentLinks);
+      queryClient.setQueryData(queryKey, context?.current);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["links"] });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -89,7 +72,7 @@ export const LinkForm = () => {
     <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex gap-3">
       <Input {...register("url", { required: true })} />
 
-      {errors && <span>{errors.message}</span>}
+      {errors.url && <span>{errors.url.message}</span>}
       <Button>Create link</Button>
     </form>
   );

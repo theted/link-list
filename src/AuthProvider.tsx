@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useState } from "react";
-// import { WhoAmIRequest } from "@/api";
+import { getToken, validateToken } from "@/helpers";
 
-// TODO: get from server
 export const WhoAmIRequest = async () => {
-  console.log("Getting user...");
+  const token = getToken();
+  if (!token || validateToken(token).expired) return false;
   const fromLocalStorage = localStorage.getItem("loginData");
   return fromLocalStorage ? JSON.parse(fromLocalStorage) : false;
 };
@@ -66,14 +66,14 @@ export const AuthProvider = ({ children }: Props) => {
   }, [setAuthStatus, authStatus]);
 
   function signIn(data: any) {
+    setUserData(data);
     setAuthStatus(AuthStatus.SignedIn);
-    // TODO: set jwt
   }
 
   function signOut() {
     console.log("Logging out...");
     localStorage.removeItem("loginData");
-    document.cookie = "";
+    localStorage.removeItem("token");
     setAuthStatus(AuthStatus.SignedOut);
   }
 
