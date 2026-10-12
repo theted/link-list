@@ -102,10 +102,12 @@ export const LinksView = () => {
         <Skeleton />
       ) : (
         <ul className="mt-4">
-          <AnimatePresence initial={false}>
-            {visible.map((link) => (
+          {/* Rows animate in when a view opens, staggered by position */}
+          <AnimatePresence>
+            {visible.map((link, index) => (
               <LinkRow
                 key={link.clientKey ?? link.id}
+                index={index}
                 link={link}
                 categories={categories.data ?? []}
                 showCategory={categoryId === null}

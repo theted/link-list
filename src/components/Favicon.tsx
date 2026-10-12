@@ -3,11 +3,12 @@ import { cn } from "@/lib/utils";
 
 type Props = { domain: string; className?: string };
 
-// Google's favicon service, with the domain's first letter as the fallback
+// Google's favicon service, with the domain's first letter as the fallback.
+// The icon fades in over a tinted tile instead of popping in when it arrives.
 export const Favicon = ({ domain, className }: Props) => {
-  const [failed, setFailed] = useState(false);
+  const [state, setState] = useState<"loading" | "loaded" | "failed">("loading");
 
-  if (failed || !domain.includes(".")) {
+  if (state === "failed" || !domain.includes(".")) {
     return (
       <span
         aria-hidden
@@ -22,14 +23,20 @@ export const Favicon = ({ domain, className }: Props) => {
   }
 
   return (
-    <img
-      src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
-      alt=""
-      width={20}
-      height={20}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className={cn("size-5 shrink-0 rounded-[5px]", className)}
-    />
+    <span className={cn("relative size-5 shrink-0 rounded-[5px] bg-rule/60", className)}>
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
+        alt=""
+        width={20}
+        height={20}
+        loading="lazy"
+        onLoad={() => setState("loaded")}
+        onError={() => setState("failed")}
+        className={cn(
+          "size-5 rounded-[5px] transition-opacity duration-300",
+          state === "loaded" ? "opacity-100" : "opacity-0"
+        )}
+      />
+    </span>
   );
 };

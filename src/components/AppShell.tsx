@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
+import { motion } from "motion/react";
 import { Wordmark } from "@/components/Wordmark";
 import { SearchField } from "@/components/SearchField";
 import { UserMenu } from "@/components/UserMenu";
@@ -11,7 +12,12 @@ export const AppShell = () => {
   const [query, setQuery] = useState("");
 
   return (
-    <div className="min-h-dvh">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-dvh"
+    >
       <header className="sticky top-0 z-30 bg-paper/85 backdrop-blur-md">
         {/* Same columns as the body below, so search lines up with the list */}
         <div className="mx-auto grid h-16 max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 sm:px-8 md:grid-cols-[13rem_minmax(0,1fr)_auto] md:gap-10 lg:grid-cols-[15rem_minmax(0,1fr)_auto] lg:gap-14">
@@ -27,6 +33,6 @@ export const AppShell = () => {
           <Outlet context={{ query, setQuery } satisfies ShellContext} />
         </main>
       </div>
-    </div>
+    </motion.div>
   );
 };

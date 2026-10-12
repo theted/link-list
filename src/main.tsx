@@ -19,18 +19,31 @@ const queryClient = new QueryClient({
   },
 });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-          <MotionConfig reducedMotion="user">
-            <ToastProvider>
-              <AppWithRouter />
-            </ToastProvider>
-          </MotionConfig>
-        </GoogleOAuthProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
+// Render once the typeface is in, so nothing reflows from the fallback font;
+// index.html's spinner covers the wait, which is capped
+const fontsReady = Promise.race([
+  Promise.all(
+    [400, 600, 800].map((weight) =>
+      document.fonts.load(`${weight} 1rem "Bricolage Grotesque Variable"`)
+    )
+  ),
+  new Promise((resolve) => setTimeout(resolve, 1500)),
+]).catch(() => {});
+
+fontsReady.then(() =>
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+            <MotionConfig reducedMotion="user">
+              <ToastProvider>
+                <AppWithRouter />
+              </ToastProvider>
+            </MotionConfig>
+          </GoogleOAuthProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  )
 );
