@@ -1,4 +1,4 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -30,6 +30,16 @@ app.use((req, _res, next) => {
 app.use("/api/links", validateToken, linksRouter);
 app.use("/api/categories", validateToken, categoriesRouter);
 app.use("/api/auth", authRouter);
+app.use("/api", (_req, res) => {
+  res.status(404).json({ message: "Not found" });
+});
+
+// Express only treats a handler as an error handler when it takes four arguments
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err);
+  res.status(500).json({ message: "Something went wrong on the server" });
+});
 
 app.get("/*", (_req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
