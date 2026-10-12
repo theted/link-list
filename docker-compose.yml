@@ -3,20 +3,21 @@ services:
     build:
       context: .
       args:
-        VITE_API_URL: ${VITE_API_URL}
+        VITE_API_URL: ${VITE_API_URL:-}
         VITE_AUTH_ID: ${VITE_AUTH_ID}
+    # Localhost only: the host nginx terminates TLS in front of this.
+    # 8085 is claimed in the port registry in theted/infrastructure (the-box.md).
     ports:
-      - "3010:8080"
+      - "127.0.0.1:8085:8080"
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      AUTH_SECTRET: ${AUTH_SECTRET}
+      AUTH_SECRET: ${AUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${VITE_AUTH_ID}
     restart: unless-stopped
     networks:
-      - proxy
-      - postgres
+      - shared-services
 
+# The box's shared postgres, reachable as host `postgres`
 networks:
-  proxy:
-    external: true
-  postgres:
+  shared-services:
     external: true
