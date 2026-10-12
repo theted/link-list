@@ -1,0 +1,88 @@
+@import "@fontsource-variable/bricolage-grotesque/standard.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hyperlink blue and visited violet are the palette: this is a list of links */
+:root {
+  --paper: 245 246 248;
+  --surface: 255 255 255;
+  --ink: 18 22 51;
+  --ink-soft: 91 96 122;
+  --rule: 223 226 235;
+  --link: 43 68 255;
+  --visited: 123 63 228;
+  --danger: 214 52 58;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: 12 15 33;
+    --surface: 22 26 54;
+    --ink: 233 235 248;
+    --ink-soft: 148 153 186;
+    --rule: 40 46 82;
+    --link: 132 145 255;
+    --visited: 184 146 255;
+    --danger: 255 112 117;
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* Short and long lists shouldn't shift the layout sideways */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-paper text-sm text-ink antialiased;
+    font-optical-sizing: auto;
+    font-variation-settings: "wdth" 100;
+  }
+
+  ::selection {
+    background: rgb(var(--link) / 0.22);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--link));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  /* The signature: a thick, low-slung link underline. As a background it can
+     be drawn in, and it wraps onto every line of a multi-line run. */
+  .underline-link {
+    background-image: linear-gradient(rgb(var(--link)), rgb(var(--link)));
+    background-repeat: no-repeat;
+    background-position: 0 86%;
+    background-size: 100% 0.085em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    padding-bottom: 0.06em;
+  }
+
+  .display {
+    font-variation-settings: "wdth" 82;
+    @apply font-extrabold tracking-[-0.022em];
+  }
+
+  .condensed {
+    font-variation-settings: "wdth" 84;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

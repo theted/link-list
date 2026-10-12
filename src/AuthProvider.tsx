@@ -1,96 +1,76 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { getToken, validateToken } from "@/helpers";
 
-export const WhoAmIRequest = async () => {
-  const token = getToken();
-  if (!token || validateToken(token).expired) return false;
-  const fromLocalStorage = localStorage.getItem("loginData");
-  return fromLocalStorage ? JSON.parse(fromLocalStorage) : false;
+export type Profile = {
+  name?: string;
+  given_name?: string;
+  email?: string;
+  picture?: string;
 };
-
-export enum AuthStatus {
-  Loading,
-  SignedIn,
-  SignedOut,
-}
 
 export interface IAuth {
-  authStatus?: AuthStatus;
-  signIn?: any;
-  signOut?: any;
-  userData?: any;
+  signedIn: boolean;
+  profile: Profile | null;
+  signIn: (token: string, profile: Profile) => void;
+  signOut: () => void;
 }
 
-const defaultState: IAuth = {
-  authStatus: AuthStatus.Loading,
+// Fired by the API client when the server rejects the session token
+export const UNAUTHORIZED_EVENT = "link-list:unauthorized";
+
+const readSession = (): Profile | null => {
+  try {
+    const token = getToken();
+    if (!token || validateToken(token).expired) return null;
+    return JSON.parse(localStorage.getItem("loginData") ?? "{}");
+  } catch {
+    return null;
+  }
 };
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const AuthContext = React.createContext<IAuth>({
+  signedIn: false,
+  profile: null,
+  signIn: () => {},
+  signOut: () => {},
+});
 
 type Props = {
   children?: React.ReactNode;
 };
 
-export const AuthContext = React.createContext(defaultState);
-
-export const AuthIsSignedIn = ({ children }: Props) => {
-  const { authStatus }: IAuth = useContext(AuthContext);
-  return <>{authStatus === AuthStatus.SignedIn ? children : null}</>;
-};
-
-export const AuthIsNotSignedIn = ({ children }: Props) => {
-  const { authStatus }: IAuth = useContext(AuthContext);
-  return <>{authStatus === AuthStatus.SignedOut ? children : null}</>;
-};
-
 export const AuthProvider = ({ children }: Props) => {
-  const [authStatus, setAuthStatus] = useState(AuthStatus.Loading);
-  const [userData, setUserData] = useState(null);
+  const queryClient = useQueryClient();
+  const [profile, setProfile] = useState<Profile | null>(readSession);
 
-  useEffect(() => {
-    async function getWhoAmI() {
-      try {
-        console.log("Try get user...");
-        const res = await WhoAmIRequest();
+  const signIn = useCallback((token: string, data: Profile) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("loginData", JSON.stringify(data));
+    setProfile(data);
+  }, []);
 
-        if (res) {
-          console.log({ AUTH: res });
-          setAuthStatus(AuthStatus.SignedIn);
-          setUserData(res);
-        } else {
-          setAuthStatus(AuthStatus.SignedOut);
-        }
-      } catch (e) {
-        setAuthStatus(AuthStatus.SignedOut);
-      }
-    }
-    getWhoAmI().then();
-  }, [setAuthStatus, authStatus]);
-
-  function signIn(data: any) {
-    setUserData(data);
-    setAuthStatus(AuthStatus.SignedIn);
-  }
-
-  function signOut() {
-    console.log("Logging out...");
+  const signOut = useCallback(() => {
     localStorage.removeItem("loginData");
     localStorage.removeItem("token");
-    setAuthStatus(AuthStatus.SignedOut);
-  }
+    queryClient.clear();
+    setProfile(null);
+  }, [queryClient]);
 
-  const state: IAuth = {
-    authStatus,
-    userData,
-    signIn,
-    signOut,
-  };
+  useEffect(() => {
+    window.addEventListener(UNAUTHORIZED_EVENT, signOut);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, signOut);
+  }, [signOut]);
 
-  if (authStatus === AuthStatus.Loading) {
-    return null;
-  }
-
-  console.log({ state });
-
-  return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ signedIn: profile !== null, profile, signIn, signOut }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

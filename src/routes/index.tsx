@@ -1,36 +1,21 @@
-import { RouterProvider, createBrowserRouter } from "react-router-dom";
-import { Home } from "./Home";
-import { Category } from "./Category";
-import { ErrorPage } from "@/routes/ErrorPage";
-import { Login } from "./Login";
+import { Navigate, RouterProvider, createBrowserRouter } from "react-router-dom";
+import { ErrorPage, NotFound } from "@/routes/ErrorPage";
+import { LinksView } from "./LinksView";
 import App from "../App";
 
-export const AppWithRouter = () => {
-  const router = createBrowserRouter([
-    {
-      path: "/",
-      Component: App,
-      children: [
-        {
-          index: true,
-          Component: Home,
-        },
+const router = createBrowserRouter([
+  {
+    path: "/",
+    Component: App,
+    errorElement: <ErrorPage />,
+    children: [
+      { index: true, Component: LinksView },
+      { path: "categories/:id", Component: LinksView },
+      // The splash page is the sign-in page now
+      { path: "login", element: <Navigate to="/" replace /> },
+    ],
+  },
+  { path: "*", Component: NotFound },
+]);
 
-        {
-          path: "categories/:id",
-          Component: Category,
-        },
-        {
-          path: "login",
-          Component: Login,
-        },
-        {
-          path: "*",
-          Component: ErrorPage,
-        },
-      ],
-    },
-  ]);
-
-  return <RouterProvider router={router} />;
-};
+export const AppWithRouter = () => <RouterProvider router={router} />;

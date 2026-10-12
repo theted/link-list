@@ -1,89 +1,241 @@
 import express from "express";
 import { db } from "../db";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { categories as categorySchema, links as linkScema } from "../db/schema";
+import { asyncHandler } from "../middleware/async";
 
 const router = express.Router();
+
+const entities: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  middot: "·",
+  laquo: "«",
+  raquo: "»",
+};
+
+const decodeEntities = (text: string) =>
+  text.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (match, code: string) => {
+    if (code[0] === "#") {
+      const point =
+        code[1].toLowerCase() === "x"
+          ? parseInt(code.slice(2), 16)
+          : parseInt(code.slice(1), 10);
+      return Number.isFinite(point) ? String.fromCodePoint(point) : match;
+    }
+    return entities[code.toLowerCase()] ?? match;
+  });
 
 type ParseTitle = (body: string) => string | null;
 
 const parseTitle: ParseTitle = (body) => {
-  const match = body.match(/<title>([^<]*)<\/title>/);
+  // Attributes are common (<title data-rh="true">), and so are line breaks
+  const match = body.match(/<title[^>]*>([^<]*)<\/title>/i);
   if (!match) return null;
+  const title = decodeEntities(match[1]).replace(/\s+/g, " ").trim();
   // links.title is varchar(256)
-  return match[1]?.trim().slice(0, 256) || null;
+  return title.slice(0, 256) || null;
 };
 
 // Best effort: a link whose page can't be fetched is still saved, untitled
 const getUrlTitle = async (url: string) => {
   try {
-    const { protocol } = new URL(url);
-    if (protocol !== "http:" && protocol !== "https:") return null;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(5000),
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; link-list/1.0)",
+        Accept: "text/html",
+      },
+    });
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    return parseTitle(await res.text());
+    // Error pages and bot challenges ("Just a moment...") have titles too
+    const type = res.headers.get("content-type") ?? "";
+    if (!res.ok || !res.body || !/html/i.test(type)) return null;
+
+    let decoder: TextDecoder;
+    try {
+      decoder = new TextDecoder(/charset=([^;\s]+)/i.exec(type)?.[1] ?? "utf-8");
+    } catch {
+      decoder = new TextDecoder();
+    }
+
+    // The title is in <head>, so stop reading once it has arrived: some
+    // servers take seconds to send the rest of a large page
+    const reader = res.body.getReader();
+    let html = "";
+    while (html.length < 512_000) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      html += decoder.decode(value, { stream: true });
+      if (/<\/title>/i.test(html)) break;
+    }
+    reader.cancel().catch(() => {});
+
+    return parseTitle(html);
   } catch {
     return null;
   }
 };
 
-router.get("/", async (_, res) => {
-  const links = await db
-    .select()
-    .from(linkScema)
-    .where(eq(linkScema.userId, res.locals.user.id));
-  res.json(links);
-});
+// Adds https:// when the scheme is missing; null for anything that isn't a
+// usable http(s) URL
+const normalizeUrl = (input: unknown) => {
+  if (typeof input !== "string") return null;
+  const trimmed = input.trim();
+  const withScheme = /^[a-z][a-z\d+.-]*:/i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
 
-router.post("/", async (req, res) => {
-  const { url, category } = req.body;
-  const userId = res.locals.user.id;
-  const categoryId = Number(category);
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (!url.hostname.includes(".") && url.hostname !== "localhost") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
 
-  if (!Number.isInteger(categoryId)) {
-    return res.status(400).json({ message: "Category is required" });
+// Resolves a category id the user owns: undefined when none was given, null
+// when it isn't theirs
+const ownedCategoryId = async (category: unknown, userId: number) => {
+  if (category === undefined || category === null || category === "") {
+    return undefined;
   }
 
-  if (typeof url !== "string" || url.length > 256) {
-    return res.status(400).json({ message: "URL must be at most 256 characters" });
-  }
+  const id = Number(category);
+  if (!Number.isInteger(id)) return null;
 
   const [owned] = await db
     .select({ id: categorySchema.id })
     .from(categorySchema)
-    .where(
-      and(eq(categorySchema.id, categoryId), eq(categorySchema.userId, userId))
-    );
+    .where(and(eq(categorySchema.id, id), eq(categorySchema.userId, userId)));
 
-  if (!owned) {
-    return res.status(404).json({ message: "Category not found" });
-  }
+  return owned ? owned.id : null;
+};
 
-  const title = await getUrlTitle(url);
-  const [link] = await db
-    .insert(linkScema)
-    .values({ url, title, categoryId, userId })
-    .returning();
-  res.json(link);
-});
+router.get(
+  "/",
+  asyncHandler(async (_, res) => {
+    const links = await db
+      .select()
+      .from(linkScema)
+      .where(eq(linkScema.userId, res.locals.user.id))
+      .orderBy(desc(linkScema.createdAt), desc(linkScema.id));
+    res.json(links);
+  })
+);
 
-router.delete("/:id", async (req, res) => {
-  const id = Number(req.params.id);
+router.post(
+  "/",
+  asyncHandler(async (req, res) => {
+    const userId = res.locals.user.id;
+    const url = normalizeUrl(req.body.url);
 
-  if (!Number.isInteger(id)) {
-    return res.status(404).json({ message: "Link not found" });
-  }
+    if (!url) {
+      return res
+        .status(400)
+        .json({ message: "That doesn't look like a web address" });
+    }
 
-  const [link] = await db
-    .delete(linkScema)
-    .where(and(eq(linkScema.id, id), eq(linkScema.userId, res.locals.user.id)))
-    .returning();
+    if (url.length > 256) {
+      return res
+        .status(400)
+        .json({ message: "Links can be at most 256 characters long" });
+    }
 
-  if (!link) {
-    return res.status(404).json({ message: "Link not found" });
-  }
+    const categoryId = await ownedCategoryId(req.body.category, userId);
 
-  res.json(link);
-});
+    if (categoryId === null) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    // A title is passed back when a deleted link is restored
+    const title =
+      typeof req.body.title === "string" && req.body.title.trim()
+        ? req.body.title.trim().slice(0, 256)
+        : await getUrlTitle(url);
+    const [link] = await db
+      .insert(linkScema)
+      .values({ url, title, categoryId: categoryId ?? null, userId })
+      .returning();
+    res.json(link);
+  })
+);
+
+// Renames a link (an empty title falls back to its URL) or moves it
+router.patch(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const userId = res.locals.user.id;
+    const changes: { title?: string | null; categoryId?: number | null } = {};
+
+    if (!Number.isInteger(id)) {
+      return res.status(404).json({ message: "Link not found" });
+    }
+
+    if ("title" in req.body) {
+      const { title } = req.body;
+      if (title !== null && typeof title !== "string") {
+        return res.status(400).json({ message: "Title must be text" });
+      }
+      changes.title = title?.trim().slice(0, 256) || null;
+    }
+
+    if ("category" in req.body) {
+      const categoryId = await ownedCategoryId(req.body.category, userId);
+      if (categoryId === null) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      changes.categoryId = categoryId ?? null;
+    }
+
+    if (Object.keys(changes).length === 0) {
+      return res.status(400).json({ message: "Nothing to change" });
+    }
+
+    const [link] = await db
+      .update(linkScema)
+      .set(changes)
+      .where(and(eq(linkScema.id, id), eq(linkScema.userId, userId)))
+      .returning();
+
+    if (!link) {
+      return res.status(404).json({ message: "Link not found" });
+    }
+
+    res.json(link);
+  })
+);
+
+router.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      return res.status(404).json({ message: "Link not found" });
+    }
+
+    const [link] = await db
+      .delete(linkScema)
+      .where(and(eq(linkScema.id, id), eq(linkScema.userId, res.locals.user.id)))
+      .returning();
+
+    if (!link) {
+      return res.status(404).json({ message: "Link not found" });
+    }
+
+    res.json(link);
+  })
+);
 
 export default router;
