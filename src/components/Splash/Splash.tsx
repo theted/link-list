@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, type Variants } from "motion/react";
 import { useAuth } from "@/AuthProvider";
 import { authenticate } from "@/helpers";
 import { Wordmark } from "@/components/Wordmark";
+import { DeepMesh } from "./DeepMesh";
 import { GoogleButton } from "./GoogleButton";
-import { LinkStream } from "./LinkStream";
 import { PasteDemo } from "./PasteDemo";
 
 const rise: Variants = {
@@ -23,6 +23,13 @@ export const Splash = () => {
   const { signIn } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
+  // index.html sinks the page into deep water before first paint; this keeps
+  // it there after signing out, and lets the app surface after signing in
+  useEffect(() => {
+    document.documentElement.classList.add("deep");
+    return () => document.documentElement.classList.remove("deep");
+  }, []);
+
   const handleCredential = async (credential?: string) => {
     setError(null);
     try {
@@ -35,7 +42,8 @@ export const Splash = () => {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col overflow-x-clip">
+    <div className="isolate flex min-h-dvh flex-col overflow-x-clip pb-6">
+      <DeepMesh />
       <motion.header
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -95,15 +103,6 @@ export const Splash = () => {
           <PasteDemo />
         </motion.div>
       </main>
-
-      <motion.footer
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.9, duration: 0.8 }}
-        className="pb-8"
-      >
-        <LinkStream />
-      </motion.footer>
     </div>
   );
 };

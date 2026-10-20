@@ -113,7 +113,7 @@ export const PasteDemo = () => {
     <div
       ref={panel}
       aria-hidden
-      className="relative w-full max-w-xl select-none rounded-[28px] border border-rule bg-surface p-3 shadow-[0_40px_90px_-40px_rgb(var(--ink)/0.35)] sm:p-4"
+      className="relative w-full max-w-xl select-none rounded-[28px] border border-white/10 bg-surface/60 p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_50px_100px_-30px_rgb(1_3_18/0.9)] backdrop-blur-2xl sm:p-4"
     >
       <ul className="mb-3 flex gap-1 px-1">
         {TABS.map((tab, i) => (
@@ -132,7 +132,7 @@ export const PasteDemo = () => {
         ))}
       </ul>
 
-      <div className="flex h-14 items-center gap-3 rounded-2xl bg-paper px-4">
+      <div className="flex h-14 items-center gap-3 rounded-2xl bg-paper/55 px-4">
         <Link2 className="size-5 shrink-0 text-ink-soft" />
         <span className="min-w-0 flex-1 truncate">
           {typed ? (
@@ -155,7 +155,7 @@ export const PasteDemo = () => {
               transition={spring}
               className={cn(
                 "flex items-start gap-3 rounded-xl px-3 py-3 transition-colors duration-300",
-                visited === row.url && "bg-paper"
+                visited === row.url && "bg-paper/55"
               )}
             >
               <Favicon domain={row.domain} className="mt-0.5" />
