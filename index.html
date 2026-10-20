@@ -7,6 +7,17 @@
     <meta name="description" content="Save links under their page titles, sorted into categories, and find them again." />
     <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0c0f21" media="(prefers-color-scheme: dark)" />
+    <!-- Signed out, the page is the splash's deep water from the first frame,
+         whatever the system theme -->
+    <script>
+      try {
+        var token = localStorage.getItem("token");
+        var payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        if (Date.now() >= payload.exp * 1000) throw 0;
+      } catch (e) {
+        document.documentElement.classList.add("deep");
+      }
+    </script>
     <title>link-list</title>
     <!-- Inline so the very first frame is the right colour, with a spinner
          that only fades in when loading takes long enough to notice -->
@@ -22,6 +33,9 @@
         .boot .track { stroke: rgb(132 145 255 / 0.18); }
         .boot .arc { stroke: #8491ff; }
       }
+      html.deep { background: #010312; }
+      html.deep .boot .track { stroke: rgb(122 166 255 / 0.18); }
+      html.deep .boot .arc { stroke: #7aa6ff; }
       @keyframes boot-in { from { opacity: 0; } }
       @keyframes boot-spin { to { transform: rotate(1turn); } }
       @media (prefers-reduced-motion: reduce) { .boot svg { animation-duration: 2.4s; } }

@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { cn } from "@/lib/utils";
 
-const prefersDark = () =>
-  window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
-
 type Props = {
   onCredential: (credential?: string) => void;
   onError: () => void;
@@ -46,7 +43,7 @@ export const GoogleButton = ({ onCredential, onError }: Props) => {
       <span
         aria-hidden
         className={cn(
-          "absolute left-0 h-10 w-56 rounded-full bg-rule/70 transition-opacity duration-300",
+          "absolute left-0 h-10 w-56 rounded-full bg-ink/15 transition-opacity duration-300",
           ready ? "opacity-0" : "animate-pulse"
         )}
       />
@@ -62,7 +59,8 @@ export const GoogleButton = ({ onCredential, onError }: Props) => {
         <GoogleLogin
           onSuccess={({ credential }) => onCredential(credential)}
           onError={onError}
-          theme={prefersDark() ? "filled_black" : "outline"}
+          // The white pill is the brightest thing on the deep water
+          theme="outline"
           shape="pill"
           size="large"
           text="continue_with"
